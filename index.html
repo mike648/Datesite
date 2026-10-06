@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Will you go out with me?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --pink:#e8336d; --deep:#c2185b; --cream:#fbf4ef; --ink:#5a3a46; --line:#e6cfd3; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    font-family:"Quicksand", system-ui, sans-serif; color:var(--ink);
+    background:linear-gradient(115deg,#f6c9d6 0%,#f3d3dc 45%,#cfd9ee 100%);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+
+  /* Screens */
+  .screen { display:none; flex-direction:column; align-items:center; text-align:center; padding:24px; width:100%; }
+  .screen.active { display:flex; animation:pop .5s ease; }
+  @keyframes pop { from { opacity:0; transform:scale(.94); } to { opacity:1; transform:none; } }
+
+  /* Glowing script headings */
+  h1 {
+    font-family:"Pacifico", cursive; font-weight:400; color:var(--pink); line-height:1.15;
+    text-shadow:0 0 6px rgba(255,255,255,.9), 0 3px 0 #f7b3c8, 0 0 22px rgba(232,51,109,.55);
+  }
+  .big { font-size:clamp(2.4rem, 8vw, 4.2rem); max-width:600px; }
+  .card h1 { font-size:clamp(2rem, 7vw, 2.7rem); }
+
+  /* Buttons */
+  .btn {
+    border:0; border-radius:999px; padding:12px 30px; font:inherit; font-weight:700;
+    cursor:pointer; transition:transform .2s, box-shadow .2s;
+  }
+  .btn:hover { transform:translateY(-2px); }
+  .yes { color:#fff; background:linear-gradient(#f0508a,#d81b60); box-shadow:0 6px 14px rgba(216,27,96,.35); }
+  .no  { color:var(--deep); background:var(--cream); border:1px solid #ecd3d8; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+  .row { display:flex; gap:28px; margin-top:48px; height:56px; align-items:center; justify-content:center; }
+
+  /* Cards */
+  .card {
+    background:var(--cream); border-radius:28px; padding:32px 28px;
+    width:min(92vw, 440px); box-shadow:0 20px 50px rgba(194,24,91,.18);
+  }
+  .emoji { font-size:2.4rem; margin-bottom:6px; }
+  .sub { margin:10px 0 18px; font-weight:700; }
+  input[type="date"] {
+    width:220px; padding:12px 14px; border-radius:14px; border:1px solid var(--line);
+    background:#fff9f6; font:inherit; text-align:center; color:var(--ink);
+  }
+  .card .btn { margin-top:16px; }
+
+  /* Activity choices */
+  .choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:20px 0 6px; }
+  .choice {
+    padding:12px 8px; border-radius:14px; border:1.5px solid var(--line); background:#fff9f6;
+    font:inherit; font-weight:700; color:var(--ink); cursor:pointer; transition:.2s;
+  }
+  .choice:hover { transform:translateY(-2px); }
+  .choice.selected { border-color:var(--deep); background:#fde7ef; box-shadow:0 0 0 2px rgba(194,24,91,.15); }
+  .result {
+    display:none; margin-top:18px; padding:12px; border:2px dashed #e3a0b7;
+    border-radius:14px; font-weight:700; color:var(--deep);
+  }
+
+  /* Floating hearts and petals */
+  .float { position:fixed; pointer-events:none; z-index:10; animation:fly 1.6s ease-out forwards; }
+  @keyframes fly { to { transform:translate(var(--dx), var(--dy)) rotate(var(--r)); opacity:0; } }
+</style>
+</head>
+<body>
+
+<!-- Screen 1: the question -->
+<section class="screen active" id="ask">
+  <h1 class="big">Will you go out with me?</h1>
+  <div class="row">
+    <button class="btn yes" id="yes">Yes</button>
+    <button class="btn no" id="no">No</button>
+  </div>
+</section>
+
+<!-- Screen 2: pick a date -->
+<section class="screen" id="pick">
+  <div class="card">
+    <div class="emoji">📅💗</div>
+    <h1>Pick a date</h1>
+    <p class="sub">Choose the day for our cute little plan.</p>
+    <input type="date" id="date">
+    <br>
+    <button class="btn yes" id="go">Continue</button>
+  </div>
+</section>
+
+<!-- Screen 3: pick an activity -->
+<section class="screen" id="plan">
+  <div class="card">
+    <div class="emoji">🍿🍝🌸</div>
+    <h1>What would you like to do?</h1>
+    <div class="choices">
+      <button class="choice">Dinner date 🍝</button>
+      <button class="choice">Movie night 🍿</button>
+      <button class="choice">Coffee and walk ☕</button>
+      <button class="choice">Picnic 🌸</button>
+      <button class="choice">Surprise me 🎁</button>
+    </div>
+    <button class="btn yes" id="lock">Lock it in</button>
+    <div class="result" id="result"></div>
+  </div>
+</section>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const show = id => {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    $(id).classList.add("active");
+  };
+
+  // Screen 1: "Yes" moves on, "No" runs away
+  $("yes").onclick = () => show("pick");
+  const no = $("no");
+  const dodge = e => {
+    e.preventDefault();
+    no.style.position = "fixed";
+    no.style.left = Math.random() * (innerWidth  - no.offsetWidth  - 40) + 20 + "px";
+    no.style.top  = Math.random() * (innerHeight - no.offsetHeight - 40) + 20 + "px";
+  };
+  ["mouseenter", "touchstart", "click"].forEach(ev => no.addEventListener(ev, dodge));
+
+  // Screen 2: date picker (defaults to today)
+  const dateInput = $("date");
+  dateInput.value = dateInput.min = new Date().toISOString().slice(0, 10);
+  $("go").onclick = () => dateInput.value ? show("plan") : dateInput.focus();
+
+  // Screen 3: choose an activity and lock it in
+  let chosen = "";
+  document.querySelectorAll(".choice").forEach(btn => btn.onclick = () => {
+    document.querySelectorAll(".choice").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    chosen = btn.textContent;
+  });
+  $("lock").onclick = e => {
+    const out = $("result");
+    out.style.display = "block";
+    if (!chosen) { out.textContent = "Pick something first 💗"; return; }
+    out.textContent = `Perfect! It is a date: ${chosen} on ${dateInput.value}`;
+    const r = e.target.getBoundingClientRect();
+    for (let i = 0; i < 26; i++) {
+      const p = document.createElement("span");
+      p.className = "float";
+      p.textContent = ["💗", "🌸", "💖"][i % 3];
+      p.style.left = r.left + r.width / 2 + "px";
+      p.style.top  = r.top  + r.height / 2 + "px";
+      p.style.fontSize = 14 + Math.random() * 14 + "px";
+      p.style.setProperty("--dx", (Math.random() - .5) * 360 + "px");
+      p.style.setProperty("--dy", -80 - Math.random() * 260 + "px");
+      p.style.setProperty("--r", (Math.random() - .5) * 120 + "deg");
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 1700);
+    }
+  };
+</script>
+</body>
+</html>
